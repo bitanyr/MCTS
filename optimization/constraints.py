@@ -77,7 +77,6 @@ def define_constraints(model):
     model.const_ess_soc_limits = pyo.Constraint(model.N, model.T, rule=ess_soc_limits_rule)
 
     def ess_no_simultaneous_rule(m, i, t):
-        # 🔴 [FIXED] مقیاس به 1e-3 افزایش یافت تا با تنظیمات Warm Start در حل‌گر تداخل نداشته باشد
         return m.P_ch[i, t] * m.P_dis[i, t] <= 1e-3
     model.const_ess_no_simul = pyo.Constraint(model.N, model.T, rule=ess_no_simultaneous_rule)
 
@@ -132,7 +131,6 @@ def define_constraints(model):
     S_GAS_CAP = P_GAS_MAX * 1.25 
     
     def gas_apparent_power_rule(m, i, t):
-        # این نامساوی مخروطی تضمین می‌کند ژنراتور زیر بار حرارتی ذوب نشود
         return m.P_gas[i, t]**2 + m.Q_gas[i, t]**2 <= (S_GAS_CAP * m.s_gas[i])**2 + 1e-4
     model.const_gas_apparent = pyo.Constraint(model.N, model.T, rule=gas_apparent_power_rule) 
 
