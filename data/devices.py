@@ -7,7 +7,7 @@ C_AUL = 5000        # $/MW
 
 # Investment Costs (CapEx)
 C_ESS_INV = 200000  # $/MW
-C_GAS_INV = 30000   # $/MW
+C_GAS_INV = 800000   # $/MW
 C_SVC_INV = 500000  # $/MVar
 C_CB_INV = 40000    # $/MVar
 C_PV_INV = 100000   # $/MW 
