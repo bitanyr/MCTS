@@ -16,16 +16,17 @@ def define_constraints(model):
     # ----------------------------------------------------------------
     # 1. Substation Constraints
     # ----------------------------------------------------------------
+    # 1.1
     def substation_voltage_rule(m, t):
         return m.v[0, t] == 1.0**2
     model.const_sub_v = pyo.Constraint(model.T, rule=substation_voltage_rule)
-
+    # 1.2 1.3
     def substation_capacity_rule(m, t):
         if hasattr(m, 'sub_overload'):
             return m.P_sub[t]**2 + m.Q_sub[t]**2 <= S_SUB_MAX**2 + m.sub_overload[t]
         return m.P_sub[t]**2 + m.Q_sub[t]**2 <= S_SUB_MAX**2
     model.const_sub_capacity = pyo.Constraint(model.T, rule=substation_capacity_rule)
-
+    # 1.4
     def substation_export_cap_rule(m, t):
         pv_available_now = sum(
             (PV_CAPACITY * PV_PROFILE[t]) - m.P_curt_res[i, t]
@@ -80,7 +81,7 @@ def define_constraints(model):
         return m.P_ch[i, t] * m.P_dis[i, t] <= 1e-3
     model.const_ess_no_simul = pyo.Constraint(model.N, model.T, rule=ess_no_simultaneous_rule)
 
-    # ----------------------------------------------------------------
+    #    3.4 ----------------------------------------------------------------
     def pv_smart_inverter_rule(m, i, t):
         has_pv = 1 if i in FIXED_PV_NODES else 0
         if has_pv == 1:
@@ -122,17 +123,12 @@ def define_constraints(model):
 
     # ----------------------------------------------------------------
     
-    def gas_limit_rule(m, i, t):
-        return m.P_gas[i, t] <= P_GAS_MAX * m.s_gas[i] + 1e-4
-    model.const_gas_limit = pyo.Constraint(model.N, model.T, rule=gas_limit_rule)
-
+    
     # Remove reactive Box Constraints and replace with circular Capability Curve constraint
     # Assume the generator is designed with a power factor of 0.8, so S_max = P_max * 1.25
     S_GAS_CAP = P_GAS_MAX * 1.25 
     
-    def gas_apparent_power_rule(m, i, t):
-        return m.P_gas[i, t]**2 + m.Q_gas[i, t]**2 <= (S_GAS_CAP * m.s_gas[i])**2 + 1e-4
-    model.const_gas_apparent = pyo.Constraint(model.N, model.T, rule=gas_apparent_power_rule) 
+    
 
     def svc_limit_rule(m, i, t):
         return m.Q_svc[i, t] <= Q_SVC_MAX * m.s_svc[i] + 1e-4
@@ -173,8 +169,9 @@ def define_constraints(model):
         q_out = sum(m.Q[k, t] for k in m.E if BRANCHES[k]['from'] == i)
         
         # Gas generator reactive power (Q_gas) added to the balance equation
-        q_inject = m.Q_svc[i, t] + m.Q_cb[i, t] + m.Q_pv[i, t] + m.Q_ess[i, t] + m.Q_gas[i, t]
-        
+        q_inject = m.Q_svc[i, t] + m.Q_cb[i, t] + m.Q_pv[i, t] + m.Q_ess[i, t] 
+
+        # 6
         if LOADS[i]['P'] > 0:
             q_curt = m.P_curt_aul[i, t] * (LOADS[i]['Q'] / LOADS[i]['P'])
         else:
