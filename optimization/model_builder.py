@@ -22,6 +22,7 @@ def build_base_model():
     return model
 
 def evaluate_placement(model, placement_dict):
+    # 1. 
     for i in model.N:
         model.s_ess[i].set_value(0)
         model.s_gas[i].set_value(0)
@@ -33,49 +34,80 @@ def evaluate_placement(model, placement_dict):
     for node in placement_dict.get('svc', []): model.s_svc[node].set_value(1)
     for node in placement_dict.get('cb', []):  model.s_cb[node].set_value(1)
 
+    # 2. 
     for t in model.T:
         for i in model.N:
+            
             model.v[i, t].set_value(1.0)
             
+            
+            model.P_curt_res[i, t].fix(0.0)
+            model.P_curt_aul[i, t].fix(0.0)
+
+            
+            if hasattr(model, 'Q_pv'):
+                model.Q_pv[i, t].fix(0.0)
+
+            
             if pyo.value(model.s_ess[i]) == 1:
+                model.E_soc[i, t].unfix()
+                model.P_ch[i, t].unfix()
+                model.P_dis[i, t].unfix()
+                if hasattr(model, 'Q_ess'):
+                    model.Q_ess[i, t].unfix() 
+                
                 model.E_soc[i, t].set_value(0.3) 
                 model.P_ch[i, t].set_value(0.01)
                 model.P_dis[i, t].set_value(0.01)
+                if hasattr(model, 'Q_ess'):
+                    model.Q_ess[i, t].set_value(0.0)
             else:
-                model.E_soc[i, t].set_value(0.0)
-                model.P_ch[i, t].set_value(0.0)
-                model.P_dis[i, t].set_value(0.0)
-                
-            model.P_curt_res[i, t].set_value(0.0)
-            model.P_curt_aul[i, t].set_value(0.0)
+                model.E_soc[i, t].fix(0.0)
+                model.P_ch[i, t].fix(0.0)
+                model.P_dis[i, t].fix(0.0)
+                if hasattr(model, 'Q_ess'):
+                    model.Q_ess[i, t].fix(0.0) 
+            
             
             if pyo.value(model.s_gas[i]) == 1:
+                model.P_gas[i, t].unfix()
                 model.P_gas[i, t].set_value(0.01)
-                model.Q_gas[i, t].set_value(0.01) 
             else:
-                model.P_gas[i, t].set_value(0.0)
-                model.Q_gas[i, t].set_value(0.0)
+                model.P_gas[i, t].fix(0.0)
                 
-            model.Q_svc[i, t].set_value(0.0)
             
             if pyo.value(model.s_cb[i]) == 1:
+                model.Q_cb[i, t].unfix()
                 model.Q_cb[i, t].set_value(0.01)
             else:
-                model.Q_cb[i, t].set_value(0.0)
-            
-            if hasattr(model, 'v_viol_down'): model.v_viol_down[i, t].set_value(0.001)
-            if hasattr(model, 'v_viol_up'): model.v_viol_up[i, t].set_value(0.001)
+                model.Q_cb[i, t].fix(0.0)
 
+            
+            if pyo.value(model.s_svc[i]) == 1:
+                model.Q_svc[i, t].unfix()
+                model.Q_svc[i, t].set_value(0.01)
+            else:
+                model.Q_svc[i, t].fix(0.0)
+            
+            
+            if hasattr(model, 'v_viol_down'): 
+                model.v_viol_down[i, t].unfix()
+                model.v_viol_down[i, t].set_value(0.001)
+            if hasattr(model, 'v_viol_up'): 
+                model.v_viol_up[i, t].unfix()
+                model.v_viol_up[i, t].set_value(0.001)
+
+        
         if hasattr(model, 'soc_viol_down'): model.soc_viol_down[i].set_value(0.001)
         if hasattr(model, 'soc_viol_up'): model.soc_viol_up[i].set_value(0.001)
+        
         for k in model.E:
             model.P[k, t].set_value(0.01)
             model.Q[k, t].set_value(0.01)
-            # (Strictly Interior)
             model.l[k, t].set_value(0.01)
             if hasattr(model, 'l_viol'): 
                 model.l_viol[k, t].set_value(0.001)
-            
+        
         model.P_sub[t].set_value(0.1)
         model.Q_sub[t].set_value(0.1)
         if hasattr(model, 'P_sub_import'): model.P_sub_import[t].set_value(0.1)
@@ -84,10 +116,9 @@ def evaluate_placement(model, placement_dict):
         if hasattr(model, 'sub_overload'): 
             model.sub_overload[t].set_value(0.001)
 
+    # 3. 
     solver = pyo.SolverFactory('ipopt')
-    
     solver.options['warm_start_init_point'] = 'yes'
-    
     solver.options['max_iter'] = 3000
     solver.options['max_cpu_time'] = 120.0 
     solver.options['tol'] = 1e-4
@@ -107,6 +138,7 @@ def evaluate_placement(model, placement_dict):
             else:
                  raise RuntimeError(f"Cannot find ipopt.exe in {idaes_path} or {fallback_path}")
 
+    # 4.
     try:
         result = solver.solve(model, tee=False)
         if (result.solver.status == pyo.SolverStatus.ok) and \
