@@ -34,7 +34,7 @@ def define_variables(model):
     model.P_gas = pyo.Var(model.N, model.T, within=pyo.NonNegativeReals)
     
     # Adding a variable reactive power to a gas-fired generator
-    model.Q_gas = pyo.Var(model.N, model.T, within=pyo.Reals) 
+    # model.Q_gas = pyo.Var(model.N, model.T, within=pyo.Reals) 
     
     model.Q_pv  = pyo.Var(model.N, model.T, within=pyo.Reals)
     model.Q_ess = pyo.Var(model.N, model.T, within=pyo.Reals)
